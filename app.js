@@ -128,8 +128,34 @@ async function gasCall(action, payload = {}) {
   if (CURRENT_USER?.username) params.set("username", CURRENT_USER.username);
 
   const url = `${API_URL}?${params.toString()}`;
-  const response = await fetch(url);
-  const result = await response.json();
+ async function gasCall(action, payload = {}) {
+  const params = new URLSearchParams();
+  params.set("action", action);
+
+  Object.entries(payload).forEach(([k, v]) => {
+    params.set(k, v ?? "");
+  });
+
+  if (CURRENT_USER?.token) params.set("token", CURRENT_USER.token);
+  if (CURRENT_USER?.role) params.set("role", CURRENT_USER.role);
+  if (CURRENT_USER?.username) params.set("username", CURRENT_USER.username);
+
+  const url = `${API_URL}?${params.toString()}`;
+  const response = await fetch(url, { method: "GET" });
+
+  const rawText = await response.text();
+
+  if (!rawText || !rawText.trim()) {
+    throw new Error("Server returned empty response");
+  }
+
+  let result;
+  try {
+    result = JSON.parse(rawText);
+  } catch (e) {
+    console.log("Raw response from server:", rawText);
+    throw new Error("Server did not return valid JSON");
+  }
 
   if (!response.ok || result.success === false) {
     throw new Error(result.message || "Request failed");
