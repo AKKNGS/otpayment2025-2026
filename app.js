@@ -402,9 +402,9 @@ function bindFilterEvents() {
   if (loginForm) loginForm.addEventListener("submit", handleLogin);
 }
 
-window.onload = () => {
-  loadSession();
+window.onload = async () => {
   bindFilterEvents();
   setTodayDefaults();
+  await loadSession();
   if (CURRENT_USER) loadDashboard();
 };
