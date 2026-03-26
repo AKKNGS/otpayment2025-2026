@@ -10,14 +10,30 @@ function saveSession(user) {
   applyRoleUI();
 }
 
-function loadSession() {
+async function loadSession() {
   try {
     const raw = localStorage.getItem("schoolpro_auth");
     CURRENT_USER = raw ? JSON.parse(raw) : null;
   } catch (e) {
     CURRENT_USER = null;
   }
-  applyRoleUI();
+
+  if (!CURRENT_USER) {
+    applyRoleUI();
+    return;
+  }
+
+  try {
+    const res = await gasCall("checkSession", {});
+    if (!res.success) {
+      throw new Error("Invalid session");
+    }
+    applyRoleUI();
+  } catch (err) {
+    CURRENT_USER = null;
+    localStorage.removeItem("schoolpro_auth");
+    applyRoleUI();
+  }
 }
 
 function logout() {
