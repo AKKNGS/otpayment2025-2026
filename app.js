@@ -1,11 +1,9 @@
-// --- CONFIGURATION ---
 const API_URL = "https://script.google.com/macros/s/AKfycbyE-UUo6yu_Fn1SUVYrrwOnvvuCbhmIoq-eW0W7VKh69OeqDZ3BHPKB4QuWWYdt7RyA5g/exec";
-let SCHOOL_LOGO_URL = "";
+
+let CURRENT_USER = null;
 let CURRENT_ROWS = [];
 let FILTER_TIMER = null;
-let CURRENT_USER = null;
 
-// --- STORAGE / AUTH ---
 function saveSession(user) {
   CURRENT_USER = user;
   localStorage.setItem("schoolpro_auth", JSON.stringify(user));
@@ -61,14 +59,13 @@ function applyRoleUI() {
   if (roleBadge) roleBadge.textContent = (CURRENT_USER.role || "").toUpperCase();
   if (loginInfo) loginInfo.textContent = `Logged in as ${CURRENT_USER.username} (${CURRENT_USER.role})`;
 
-  adminOnly.forEach((el) => {
+  adminOnly.forEach(el => {
     el.style.display = isAdmin() ? "" : "none";
   });
 
   if (CURRENT_ROWS.length) renderTable(CURRENT_ROWS);
 }
 
-// --- HELPERS ---
 function fmt(n) {
   return Number(n || 0).toLocaleString() + " KHR";
 }
@@ -80,23 +77,6 @@ function esc(t) {
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#039;");
-}
-
-function toFlatParams(obj, prefix = "") {
-  const out = {};
-  Object.keys(obj || {}).forEach((key) => {
-    const value = obj[key];
-    const fullKey = prefix ? `${prefix}.${key}` : key;
-
-    if (value === undefined || value === null) {
-      out[fullKey] = "";
-    } else if (typeof value === "object" && !Array.isArray(value)) {
-      Object.assign(out, toFlatParams(value, fullKey));
-    } else {
-      out[fullKey] = String(value);
-    }
-  });
-  return out;
 }
 
 function getFilters() {
@@ -119,42 +99,36 @@ function setTodayDefaults() {
   }
 }
 
-// --- API WRAPPER ---
-// Use GET to avoid cross-origin POST issues with Apps Script on Vercel/GitHub Pages.
 async function gasCall(action, payload = {}) {
   const params = new URLSearchParams();
   params.set("action", action);
 
-  const flatPayload = toFlatParams(payload);
-  Object.entries(flatPayload).forEach(([k, v]) => params.set(k, v));
+  Object.entries(payload).forEach(([k, v]) => {
+    params.set(k, v ?? "");
+  });
 
   if (CURRENT_USER?.token) params.set("token", CURRENT_USER.token);
   if (CURRENT_USER?.role) params.set("role", CURRENT_USER.role);
   if (CURRENT_USER?.username) params.set("username", CURRENT_USER.username);
 
   const url = `${API_URL}?${params.toString()}`;
-  const response = await fetch(url, { method: "GET" });
+  const response = await fetch(url);
+  const result = await response.json();
 
-  let result;
-  try {
-    result = await response.json();
-  } catch (e) {
-    throw new Error("API response មិនមែនជា JSON");
-  }
-
-  if (!response.ok || (result && result.success === false)) {
-    throw new Error(result?.message || "Request failed");
+  if (!response.ok || result.success === false) {
+    throw new Error(result.message || "Request failed");
   }
 
   return result;
 }
 
-// --- LOGIN ---
 async function handleLogin(e) {
   e.preventDefault();
+
   const username = document.getElementById("loginUsername").value.trim();
   const password = document.getElementById("loginPassword").value;
-  const role = document.getElementById("loginRole").value;
+  const roleEl = document.getElementById("loginRole");
+  const role = roleEl ? roleEl.value : "";
   const btn = document.getElementById("loginBtn");
 
   if (!username || !password || !role) {
@@ -165,8 +139,13 @@ async function handleLogin(e) {
   try {
     btn.disabled = true;
     btn.textContent = "កំពុងចូល...";
+
     const res = await gasCall("login", { username, password, role });
-    if (res.user) saveSession(res.user);
+
+    if (res.user) {
+      saveSession(res.user);
+    }
+
     alert(res.message || "Login success");
     loadDashboard();
   } catch (err) {
@@ -177,12 +156,11 @@ async function handleLogin(e) {
   }
 }
 
-// --- DASHBOARD ---
 async function loadDashboard() {
   if (!CURRENT_USER) return;
+
   try {
     const res = await gasCall("getBootstrapData", getFilters());
-    if (res.logoUrl) SCHOOL_LOGO_URL = res.logoUrl;
     CURRENT_ROWS = res.rows || [];
     renderCards(res.cards || {});
     renderTable(CURRENT_ROWS);
@@ -194,12 +172,17 @@ async function loadDashboard() {
   }
 }
 
-function reloadData() { loadDashboard(); }
-function applyFilters() { loadDashboard(); }
+function reloadData() {
+  loadDashboard();
+}
+
+function applyFilters() {
+  loadDashboard();
+}
 
 function debounceApplyFilters() {
   clearTimeout(FILTER_TIMER);
-  FILTER_TIMER = setTimeout(() => loadDashboard(), 350);
+  FILTER_TIMER = setTimeout(() => loadDashboard(), 300);
 }
 
 function clearFilters() {
@@ -221,14 +204,15 @@ function fillSelect(id, items, placeholder) {
   if (!el) return;
   const current = el.value;
   el.innerHTML =
-    '<option value="">' + placeholder + "</option>" +
-    items.map((x) => `<option value="${esc(x)}">${esc(x)}</option>`).join("");
-  el.value = items.some((x) => String(x) === String(current)) ? current : "";
+    `<option value="">${placeholder}</option>` +
+    items.map(x => `<option value="${esc(x)}">${esc(x)}</option>`).join("");
+  el.value = items.includes(current) ? current : "";
 }
 
 function renderCards(cards) {
   const el = document.getElementById("cards");
   if (!el) return;
+
   el.innerHTML = `
     <div class="card"><span>សិស្សសរុប</span><strong>${cards.totalStudents || 0}</strong></div>
     <div class="card"><span>សិស្សស្រី</span><strong>${cards.femaleStudents || 0}</strong></div>
@@ -250,15 +234,16 @@ function renderTable(rows) {
   }
 
   tbody.innerHTML = rows.map((r, i) => {
-    const safeId = String(r.ID).replaceAll("'", "\\'");
+    const safeId = String(r.ID || "").replaceAll("'", "\\'");
     const actions = isAdmin()
       ? `<button class="mini blue" onclick="editPayment('${safeId}')">Edit</button>
          <button class="mini red" onclick="deletePaymentRow('${safeId}')">Delete</button>`
       : "";
+
     return `
       <tr>
         <td>${i + 1}</td>
-        <td class="mono">${esc(r.payment_id)}</td>
+        <td>${esc(r.payment_id)}</td>
         <td>${esc(r.student_id)}</td>
         <td>${esc(r.student_name)}</td>
         <td>${esc(r.gender)}</td>
@@ -271,26 +256,19 @@ function renderTable(rows) {
         <td>${fmt(r.daily_amount)}</td>
         <td>${esc(r.paid_date)}</td>
         <td>${esc(r.report_date)}</td>
-        <td>${r.days || 30}</td>
-        <td>
-          <div class="row-actions">
-            ${actions}
-            <button class="mini green" onclick="printReceipt('${safeId}')">Receipt</button>
-          </div>
-        </td>
+        <td>${esc(r.days || 30)}</td>
+        <td>${actions}</td>
       </tr>
     `;
   }).join("");
 }
 
-// --- MODAL & FORM ---
 function openModal() {
   if (!requireAdmin()) return;
   document.getElementById("modalTitle").textContent = "Add Payment";
   document.getElementById("recordInternalId").value = "";
   document.getElementById("recordPaymentId").value = "";
   document.getElementById("paymentForm").reset();
-  document.getElementById("teacher_gender").value = "";
   document.getElementById("days").value = 30;
   setTodayDefaults();
   autoCalc();
@@ -345,6 +323,7 @@ async function submitPayment(e) {
 
 async function editPayment(id) {
   if (!requireAdmin()) return;
+
   try {
     const res = await gasCall("getPaymentById", { id });
     const r = res.data;
@@ -376,6 +355,7 @@ async function editPayment(id) {
 async function deletePaymentRow(id) {
   if (!requireAdmin()) return;
   if (!confirm("តើអ្នកចង់លុបទិន្នន័យនេះមែនទេ?")) return;
+
   try {
     const res = await gasCall("deletePayment", { id });
     alert(res.message || "Deleted");
@@ -385,83 +365,8 @@ async function deletePaymentRow(id) {
   }
 }
 
-// --- REPORTS & EXPORTS ---
-async function printReceipt(id) {
-  try {
-    const res = await gasCall("getReceiptData", { id });
-    const r = res.data;
-    if (!r) throw new Error("Record not found");
-
-    const w = window.open("", "_blank");
-    w.document.write(`
-      <html>
-      <head><title>Receipt</title><meta charset="utf-8">
-      <style>
-        body{font-family:Arial,sans-serif;padding:24px}
-        .box{max-width:760px;margin:auto;border:2px solid #222;border-radius:16px;padding:24px}
-        h2{text-align:center;margin-top:0}
-        .line{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px dashed #bbb}
-        .total{font-size:22px;font-weight:700;margin-top:16px}
-      </style></head>
-      <body>
-        <div class="box">
-          <h2>បង្កាន់ដៃបង់ប្រាក់</h2>
-          <div class="line"><strong>payment_id</strong><span>${esc(r.payment_id)}</span></div>
-          <div class="line"><strong>student_name</strong><span>${esc(r.student_name)}</span></div>
-          <div class="line"><strong>teacher_name</strong><span>${esc(r.teacher_name)}</span></div>
-          <div class="line"><strong>paid_date</strong><span>${esc(r.paid_date)}</span></div>
-          <div class="line"><strong>amount</strong><span>${fmt(r.amount)}</span></div>
-          <div class="total">សរុប: ${fmt(r.amount)}</div>
-        </div>
-        <script>window.onload=function(){window.print();}<\/script>
-      </body></html>
-    `);
-    w.document.close();
-  } catch (err) {
-    alert(err.message || "Receipt failed");
-  }
-}
-
-async function printDailyReport() {
-  try {
-    const res = await gasCall("getDailyReport", getFilters());
-    const w = window.open("", "_blank");
-    w.document.write(`<html><head><title>Report</title><meta charset="utf-8"></head><body><h2>Daily Report Data Ready</h2><p>Total Budget: ${fmt(res.summary?.totalBudget)}</p><script>window.print();<\/script></body></html>`);
-    w.document.close();
-  } catch (err) {
-    alert(err.message || "Print Failed");
-  }
-}
-
-async function printMonthlyTeacherReport() {
-  try {
-    const res = await gasCall("getMonthlyTeacherReport", getFilters());
-    const w = window.open("", "_blank");
-    w.document.write(`<html><head><title>Report</title><meta charset="utf-8"></head><body><h2>Monthly Report Data Ready</h2><p>Total Teachers: ${res.summary?.total_teachers || 0}</p><script>window.print();<\/script></body></html>`);
-    w.document.close();
-  } catch (err) {
-    alert(err.message || "Print Failed");
-  }
-}
-
-async function exportCsv() {
-  try {
-    const res = await gasCall("exportFilteredCsv", getFilters());
-    if (res && res.url) {
-      window.open(res.url, "_blank");
-      alert("Export បានជោគជ័យ");
-    } else {
-      throw new Error("Export failed");
-    }
-  } catch (err) {
-    alert(err.message || "Export failed");
-  }
-}
-
-// --- INIT ---
 function bindFilterEvents() {
-  const ids = ["filterDate", "filterMonth", "filterTeacher", "filterStudent"];
-  ids.forEach((id) => {
+  ["filterDate", "filterMonth", "filterTeacher", "filterStudent"].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.addEventListener("change", loadDashboard);
   });
@@ -479,12 +384,6 @@ function bindFilterEvents() {
 
   const loginForm = document.getElementById("loginForm");
   if (loginForm) loginForm.addEventListener("submit", handleLogin);
-}
-
-if ("serviceWorker" in navigator) {
-  window.addEventListener("load", () => {
-    navigator.serviceWorker.register("./sw.js");
-  });
 }
 
 window.onload = () => {
