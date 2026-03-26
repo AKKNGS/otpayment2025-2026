@@ -6,7 +6,7 @@ let FILTER_TIMER = null;
 
 function saveSession(user) {
   CURRENT_USER = user;
-  localStorage.setItem("schoolpro_auth", JSON.stringify(user));
+ 
   applyRoleUI();
 }
 
