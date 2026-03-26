@@ -6,39 +6,17 @@ let FILTER_TIMER = null;
 
 function saveSession(user) {
   CURRENT_USER = user;
- 
+  localStorage.setItem("schoolpro_auth", JSON.stringify(user));
   applyRoleUI();
 }
 
-async function loadSession() {
-  try {
-    const raw = localStorage.getItem("schoolpro_auth");
-    CURRENT_USER = raw ? JSON.parse(raw) : null;
-  } catch (e) {
-    CURRENT_USER = null;
-  }
-
-  if (!CURRENT_USER) {
-    applyRoleUI();
-    return;
-  }
-
-  try {
-    const res = await gasCall("checkSession", {});
-    if (!res.success) {
-      throw new Error("Invalid session");
-    }
-    applyRoleUI();
-  } catch (err) {
-    CURRENT_USER = null;
-    localStorage.removeItem("schoolpro_auth");
-    applyRoleUI();
-  }
+function clearSession() {
+  CURRENT_USER = null;
+  localStorage.removeItem("schoolpro_auth");
 }
 
 function logout() {
-  CURRENT_USER = null;
-  localStorage.removeItem("schoolpro_auth");
+  clearSession();
   applyRoleUI();
 }
 
@@ -78,8 +56,6 @@ function applyRoleUI() {
   adminOnly.forEach(el => {
     el.style.display = isAdmin() ? "" : "none";
   });
-
-  if (CURRENT_ROWS.length) renderTable(CURRENT_ROWS);
 }
 
 function fmt(n) {
@@ -128,21 +104,7 @@ async function gasCall(action, payload = {}) {
   if (CURRENT_USER?.username) params.set("username", CURRENT_USER.username);
 
   const url = `${API_URL}?${params.toString()}`;
- async function gasCall(action, payload = {}) {
-  const params = new URLSearchParams();
-  params.set("action", action);
-
-  Object.entries(payload).forEach(([k, v]) => {
-    params.set(k, v ?? "");
-  });
-
-  if (CURRENT_USER?.token) params.set("token", CURRENT_USER.token);
-  if (CURRENT_USER?.role) params.set("role", CURRENT_USER.role);
-  if (CURRENT_USER?.username) params.set("username", CURRENT_USER.username);
-
-  const url = `${API_URL}?${params.toString()}`;
-  const response = await fetch(url, { method: "GET" });
-
+  const response = await fetch(url, { method: "GET", cache: "no-store" });
   const rawText = await response.text();
 
   if (!rawText || !rawText.trim()) {
@@ -152,8 +114,8 @@ async function gasCall(action, payload = {}) {
   let result;
   try {
     result = JSON.parse(rawText);
-  } catch (e) {
-    console.log("Raw response from server:", rawText);
+  } catch (err) {
+    console.error("Raw response:", rawText);
     throw new Error("Server did not return valid JSON");
   }
 
@@ -164,13 +126,34 @@ async function gasCall(action, payload = {}) {
   return result;
 }
 
+async function loadSession() {
+  try {
+    const raw = localStorage.getItem("schoolpro_auth");
+    CURRENT_USER = raw ? JSON.parse(raw) : null;
+  } catch (err) {
+    CURRENT_USER = null;
+  }
+
+  if (!CURRENT_USER) {
+    applyRoleUI();
+    return;
+  }
+
+  try {
+    await gasCall("checkSession", {});
+    applyRoleUI();
+  } catch (err) {
+    clearSession();
+    applyRoleUI();
+  }
+}
+
 async function handleLogin(e) {
   e.preventDefault();
 
   const username = document.getElementById("loginUsername").value.trim();
   const password = document.getElementById("loginPassword").value;
-  const roleEl = document.getElementById("loginRole");
-  const role = roleEl ? roleEl.value : "";
+  const role = document.getElementById("loginRole").value;
   const btn = document.getElementById("loginBtn");
 
   if (!username || !password || !role) {
@@ -184,12 +167,13 @@ async function handleLogin(e) {
 
     const res = await gasCall("login", { username, password, role });
 
-    if (res.user) {
-      saveSession(res.user);
+    if (!res.user) {
+      throw new Error("Login response missing user");
     }
 
+    saveSession(res.user);
     alert(res.message || "Login success");
-    loadDashboard();
+    await loadDashboard();
   } catch (err) {
     alert(err.message || "Login failed");
   } finally {
@@ -208,7 +192,7 @@ async function loadDashboard() {
     renderTable(CURRENT_ROWS);
     populateFilters(res.filterOptions || {});
     const rc = document.getElementById("rowCount");
-    if (rc) rc.textContent = CURRENT_ROWS.length + " records";
+    if (rc) rc.textContent = `${CURRENT_ROWS.length} records`;
   } catch (err) {
     alert(err.message || "Error loading dashboard");
   }
@@ -357,7 +341,7 @@ async function submitPayment(e) {
     const res = await gasCall(action, payload);
     alert(res.message || "Saved");
     closeModal();
-    loadDashboard();
+    await loadDashboard();
   } catch (err) {
     alert(err.message || "Save failed");
   }
@@ -387,7 +371,6 @@ async function editPayment(id) {
     document.getElementById("paid_date").value = r.paid_date || "";
     document.getElementById("report_date").value = r.report_date || "";
     document.getElementById("days").value = r.days || 30;
-
     document.getElementById("paymentModal").classList.add("show");
   } catch (err) {
     alert(err.message || "Edit error");
@@ -401,7 +384,7 @@ async function deletePaymentRow(id) {
   try {
     const res = await gasCall("deletePayment", { id });
     alert(res.message || "Deleted");
-    loadDashboard();
+    await loadDashboard();
   } catch (err) {
     alert(err.message || "Delete failed");
   }
@@ -416,7 +399,7 @@ function bindFilterEvents() {
   const search = document.getElementById("searchText");
   if (search) {
     search.addEventListener("input", debounceApplyFilters);
-    search.addEventListener("keydown", (e) => {
+    search.addEventListener("keydown", e => {
       if (e.key === "Enter") {
         e.preventDefault();
         loadDashboard();
@@ -432,5 +415,7 @@ window.onload = async () => {
   bindFilterEvents();
   setTodayDefaults();
   await loadSession();
-  if (CURRENT_USER) loadDashboard();
+  if (CURRENT_USER) {
+    await loadDashboard();
+  }
 };
