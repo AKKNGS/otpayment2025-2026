@@ -2,77 +2,132 @@
 <html lang="km">
 <head>
   <meta charset="UTF-8">
-  <title>School Pro Plus</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>School Pro+</title>
   <meta name="theme-color" content="#2563eb">
-  <link rel="manifest" href="manifest.json">
-  <link rel="apple-touch-icon" href="icon-192.png">
-  <link rel="stylesheet" href="style.css">
+  <link rel="manifest" href="./manifest.json">
+  <link rel="stylesheet" href="./style.css">
 </head>
 <body>
-  <section class="auth-screen" id="authScreen">
-    <div class="auth-card">
-      <div class="brand auth-brand">
+  <div class="login-screen" id="loginScreen">
+    <div class="login-card">
+      <div class="brand login-brand">
         <div class="brand-icon">🔐</div>
         <div>
           <h2>School Pro+</h2>
           <p>Viewer / Admin Login</p>
         </div>
       </div>
-      <form id="loginForm" class="auth-form">
-        <div class="field"><label>Username</label><input id="loginUsername" type="text" placeholder="admin or viewer" required></div>
-        <div class="field"><label>Password</label><input id="loginPassword" type="password" placeholder="********" required></div>
-        <button class="btn primary" type="submit">Login</button>
-        <p class="login-message" id="loginMessage"></p>
-        <div class="hint-box">
-          <strong>Demo account</strong>
-          <p>Admin: admin / admin123</p>
-          <p>Viewer: viewer / viewer123</p>
-        </div>
-      </form>
-    </div>
-  </section>
 
-  <div class="app-shell hidden" id="appShell">
+      <form id="loginForm" class="login-form">
+        <div class="field">
+          <label>Username</label>
+          <input type="text" id="loginUsername" placeholder="Enter username" required>
+        </div>
+
+        <div class="field">
+          <label>Password</label>
+          <input type="password" id="loginPassword" placeholder="Enter password" required>
+        </div>
+
+        <div class="field">
+          <label>Role</label>
+          <select id="loginRole" required>
+            <option value="">Select role</option>
+            <option value="admin">Admin</option>
+            <option value="viewer">Viewer</option>
+          </select>
+        </div>
+
+        <button type="submit" class="btn primary full" id="loginBtn">Login</button>
+      </form>
+
+      <div class="demo-note">
+        <strong>Demo account</strong>
+        <div>Admin: admin / admin123</div>
+        <div>Viewer: viewer / viewer123</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="app-shell" id="appShell" style="display:none;">
     <aside class="sidebar">
       <div class="brand">
         <div class="brand-icon">🎓</div>
         <div>
           <h2>School Pro+</h2>
-          <p>WebApp Dashboard</p>
+          <p>Dashboard</p>
         </div>
       </div>
-      <div class="user-panel">
-        <strong id="userBadge">User</strong>
-        <span id="userRole">VIEWER</span>
+
+      <div class="session-box">
+        <div class="session-user">
+          <strong id="userBadge">-</strong>
+          <span id="roleBadge">-</span>
+        </div>
+        <small id="loginInfo">Not logged in</small>
       </div>
+
       <div class="menu">
         <button class="menu-btn active" onclick="loadDashboard()">Dashboard</button>
-        <button class="menu-btn" data-admin-only="true" onclick="openModal()">Add Payment</button>
-        <button class="menu-btn" onclick="exportCsv()">Export CSV</button>
-        <button class="menu-btn" onclick="printDailyReport()">Print Daily Report</button>
-        <button class="menu-btn" onclick="printMonthlyTeacherReport()">Print Monthly Report</button>
+        <button class="menu-btn" data-role="admin" onclick="openModal()">Add Payment</button>
         <button class="menu-btn" onclick="reloadData()">Reload</button>
-        <button class="menu-btn danger-btn" onclick="logout()">Logout</button>
+        <button class="menu-btn logout-btn" onclick="logout()">Logout</button>
       </div>
     </aside>
 
     <main class="main">
       <div class="topbar">
         <div>
-          <h1>Dashboard Pro Plus</h1>
-          <p>Professional analytics and payment management</p>
+          <h1>Dashboard</h1>
+          <p>School payment management</p>
         </div>
       </div>
 
       <div class="filters">
-        <div class="field"><label>ថ្ងៃ</label><input type="date" id="filterDate"></div>
-        <div class="field"><label>ខែ</label><select id="filterMonth">
-          <option value="">-- ខែទាំងអស់ --</option><option value="01">មករា</option><option value="02">កុម្ភៈ</option><option value="03">មីនា</option><option value="04">មេសា</option><option value="05">ឧសភា</option><option value="06">មិថុនា</option><option value="07">កក្កដា</option><option value="08">សីហា</option><option value="09">កញ្ញា</option><option value="10">តុលា</option><option value="11">វិច្ឆិកា</option><option value="12">ធ្នូ</option>
-        </select></div>
-        <div class="field"><label>គ្រូ</label><select id="filterTeacher"><option value="">-- គ្រូទាំងអស់ --</option></select></div>
-        <div class="field"><label>សិស្ស</label><select id="filterStudent"><option value="">-- សិស្សទាំងអស់ --</option></select></div>
-        <div class="field grow"><label>Search</label><input type="text" id="searchText" placeholder="Search student / teacher / class / payment id"></div>
+        <div class="field">
+          <label>ថ្ងៃ</label>
+          <input type="date" id="filterDate">
+        </div>
+
+        <div class="field">
+          <label>ខែ</label>
+          <select id="filterMonth">
+            <option value="">-- ខែទាំងអស់ --</option>
+            <option value="01">មករា</option>
+            <option value="02">កុម្ភៈ</option>
+            <option value="03">មីនា</option>
+            <option value="04">មេសា</option>
+            <option value="05">ឧសភា</option>
+            <option value="06">មិថុនា</option>
+            <option value="07">កក្កដា</option>
+            <option value="08">សីហា</option>
+            <option value="09">កញ្ញា</option>
+            <option value="10">តុលា</option>
+            <option value="11">វិច្ឆិកា</option>
+            <option value="12">ធ្នូ</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label>គ្រូ</label>
+          <select id="filterTeacher">
+            <option value="">-- គ្រូទាំងអស់ --</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label>សិស្ស</label>
+          <select id="filterStudent">
+            <option value="">-- សិស្សទាំងអស់ --</option>
+          </select>
+        </div>
+
+        <div class="field grow">
+          <label>Search</label>
+          <input type="text" id="searchText" placeholder="Search...">
+        </div>
+
         <div class="filter-actions">
           <button class="btn primary" onclick="applyFilters()">Filter</button>
           <button class="btn secondary" onclick="clearFilters()">Clear</button>
@@ -82,10 +137,35 @@
       <section class="cards" id="cards"></section>
 
       <section class="panel">
-        <div class="panel-head"><div><h3>Payment Table</h3><p id="rowCount">0 records</p></div></div>
+        <div class="panel-head">
+          <div>
+            <h3>Payment Table</h3>
+            <p id="rowCount">0 records</p>
+          </div>
+        </div>
+
         <div class="table-wrap">
           <table>
-            <thead><tr><th>#</th><th>payment_id</th><th>student_id</th><th>student_name</th><th>gender</th><th>class</th><th>teacher_name</th><th>teacher_gender</th><th>amount</th><th>teacher80</th><th>school20</th><th>daily_amount</th><th>paid_date</th><th>report_date</th><th>days</th><th>Action</th></tr></thead>
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>payment_id</th>
+                <th>student_id</th>
+                <th>student_name</th>
+                <th>gender</th>
+                <th>class</th>
+                <th>teacher_name</th>
+                <th>teacher_gender</th>
+                <th>amount</th>
+                <th>teacher80</th>
+                <th>school20</th>
+                <th>daily_amount</th>
+                <th>paid_date</th>
+                <th>report_date</th>
+                <th>days</th>
+                <th>Action</th>
+              </tr>
+            </thead>
             <tbody id="paymentTbody"></tbody>
           </table>
         </div>
@@ -95,16 +175,40 @@
 
   <div class="modal" id="paymentModal">
     <div class="modal-box">
-      <div class="modal-head"><h3 id="modalTitle">Add Payment</h3><button class="icon-btn" onclick="closeModal()">✕</button></div>
+      <div class="modal-head">
+        <h3 id="modalTitle">Add Payment</h3>
+        <button class="icon-btn" onclick="closeModal()">✕</button>
+      </div>
+
       <form id="paymentForm" onsubmit="submitPayment(event)">
-        <input type="hidden" id="recordInternalId"><input type="hidden" id="recordPaymentId">
+        <input type="hidden" id="recordInternalId">
+        <input type="hidden" id="recordPaymentId">
+
         <div class="form-grid">
           <div class="field"><label>student_id</label><input type="text" id="student_id"></div>
           <div class="field"><label>student_name</label><input type="text" id="student_name" required></div>
-          <div class="field"><label>gender</label><select id="gender" required><option value="">Select</option><option value="Male">Male</option><option value="Female">Female</option></select></div>
+
+          <div class="field">
+            <label>gender</label>
+            <select id="gender" required>
+              <option value="">Select</option>
+              <option value="Male">Male</option>
+              <option value="Female">Female</option>
+            </select>
+          </div>
+
           <div class="field"><label>class</label><input type="text" id="class"></div>
           <div class="field"><label>teacher_name</label><input type="text" id="teacher_name" required></div>
-          <div class="field"><label>teacher_gender</label><select id="teacher_gender"><option value="">Select</option><option value="Male">Male</option><option value="Female">Female</option></select></div>
+
+          <div class="field">
+            <label>teacher_gender</label>
+            <select id="teacher_gender">
+              <option value="">Select</option>
+              <option value="Male">Male</option>
+              <option value="Female">Female</option>
+            </select>
+          </div>
+
           <div class="field"><label>amount</label><input type="number" id="amount" required oninput="autoCalc()"></div>
           <div class="field"><label>teacher80</label><input type="number" id="teacher80" readonly></div>
           <div class="field"><label>school20</label><input type="number" id="school20" readonly></div>
@@ -113,10 +217,15 @@
           <div class="field"><label>paid_date</label><input type="date" id="paid_date" required></div>
           <div class="field"><label>report_date</label><input type="date" id="report_date" required></div>
         </div>
-        <div class="form-actions"><button type="button" class="btn secondary" onclick="closeModal()">Cancel</button><button type="submit" class="btn primary">Save</button></div>
+
+        <div class="form-actions">
+          <button type="button" class="btn secondary" onclick="closeModal()">Cancel</button>
+          <button type="submit" class="btn primary">Save</button>
+        </div>
       </form>
     </div>
   </div>
-  <script src="app.js"></script>
+
+  <script src="./app.js"></script>
 </body>
 </html>
