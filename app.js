@@ -1,4 +1,4 @@
-const API_URL = "https://script.google.com/macros/s/AKfycbyE-UUo6yu_Fn1SUVYrrwOnvvuCbhmIoq-eW0W7VKh69OeqDZ3BHP4QuWWYdt7RyA5g/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbyE-UUo6yu_Fn1SUVYrrwOnvvuCbhmIoq-eW0W7VKh69OeqDZ3BHPKB4QuWWYdt7RyA5g/exec";
 let CURRENT_ROWS = [];
 let FILTER_TIMER = null;
 let CURRENT_USER = null;
